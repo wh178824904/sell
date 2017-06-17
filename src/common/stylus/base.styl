@@ -1,0 +1,30 @@
+body, html
+  line-height: 1
+  font-weight: 200
+  font-family: 'PingFang SC', 'STHeitiSC-Light', 'Helvetica-Light', arial, sans-serif
+
+.clearfix
+  display: inline-block
+  &:after
+    display: block
+    content: "."
+    height: 0
+    line-height: 0
+    clear: both
+    visibility: hidden
+@media (-webkit-min-device-pixel-ratio: 1.5),(min-device-pixel-ratio: 1.5) 
+//想让border-1px根据不同的dpi进行缩放，就要使用media进行设置,这里设置最小dpr为1.5,下面scale设置为0.7，1.5*0.5接近为1px
+  .border-1px
+    &::after
+      -webkit-transform: scaleY(0.7)
+      transform: scaleY(0.7)
+
+//2*0.5=1px
+@media (-webkit-min-device-pixel-ratio: 2),(min-device-pixel-ratio: 2)
+  .border-1px
+    &::after
+      -webkit-transform: scaleY(0.5)
+      transform: scaleY(0.5)
+
+//media设置好想全局引用，要依赖所有的styl公共样式，这时新建一个index.styl文件，里面@import所欲的其他styl文件.再然后就可以在main.js里面引用全局styl
+

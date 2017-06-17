@@ -1,0 +1,101 @@
+1.手机端制作一条1px的边框：
+新建一个函数,里面可以放入color变量，指定border的颜色，在App.vue里面引用border-1px，里面加具体颜色,在此styl文件里面给要添加边框的元素添加一个after的伪类，伪类里面引用$color变量。按上面的步骤实现的边框和border：1px实现的边框是一样的,在dpr为2的手机里面显示的还是2px的边框。所以我们还有给伪类实现的边框进行一个缩放，已适应dpi为2的手机，让它真正成为一个1像素的边框.方法是在要加1px边框的元素里面加border-1px这个我们刚定义的类名，在新建一个base.styl的文件,里面新建一个全局的border-1px样式，在任何地方都可以用
+2.header里面"5个"的小图标点击弹出详情弹层页如果用flex布局，当长度超过手机高度时，最下面的关闭图标会覆盖到上方的文字上面。所以这里要用Css Sticky footers布局。
+Css Sticky footers方法：要有3层，首先要设置detail-wrapper层的最小高度为100%，撑满整个屏幕，不然下面的关闭按钮是定位不到那个位置的。然后detail-close层加一个负margin让关闭按钮位置向上提。最后是给detail-wrapper里面的内容层detail-main加一个padding-bottom，这一句就是Css Sticky footers的关键，如果没有这一句，关闭符号就会覆盖到上面的文字
+地址是：   http://www.w3cplus.com/css3/css-secrets/sticky-footers.html
+3.文字局线条中间，线条自适应，是一个经典布局，本项目在移动端用flex布局实现，flex推荐看阮一峰老师的文章地址:http://www.ruanyifeng.com/blog/2015/07/flex-grammar.html
+4.vue-loader在编译的时候会用到一个Postcss工具，会给有兼容性问题的css属性添加兼容性代码。而Postcss是根据can i use（http://caniuse.com）官网去写的代码，所以其实现的兼容性是可以得到保证的。所以上面用flex布局时，只需要给父元素display: flex，子元素flex: 1就可以了不需要兼容性写法。
+5.弹出层关闭，打开的过度动画实现：
+  <div class="detail" v-show="detailShow" transition="fade"> 首先给要实现关闭动画的元素添加transition="fade"属性，然后添加下面的css属性： 
+  transition: all 0.5s
+	  &.fade-transition
+	  	opacity: 1
+	  	background: rgba(7,17,27,0.8)
+	  &.fade-leave,&.fade-enter
+	  	opacity: 0
+	  	background: rgba(7,17,27,0)
+地址是：https://cn.vuejs.org/v2/guide/transitions.html
+6.flex3个属性：1.等分2.缩放型号3.站位空间
+7.为了让超出手机高度的内容显示出来，实现上下滑动，要依赖一个js库，叫better-scroll.
+地址： https://github.com/ustbhuangyi/better-scroll
+better-scroll用法: 
+首先：在package.json里面写出"better-scroll": "^0.1.7"版本号，然后cnpm install安装better-scroll，在<script>里面引用模块import BScroll from 'better-scroll';然后再要实现滑动的内容的HTML代码里添加v-el="menu-wrapper"，注意这里类名中间是横线不是驼峰命名的。然后在下面封装一个调用方法，
+methods: {
+			_initScroll() {   //封装的调用方法：this.menuScroll表示左侧栏，BScroll()和ajk接口是一样的，里面有两个参数，一个是demo对象，demo对象通过vue提供的api(v-el:menu-wrapper，注意类名中间用横线连接)来获得的,然后在BScroll里面就可以用this.$els.menuWrapper(注意这里要用驼峰命名)来取到demo。第二个参数是options是JSON对象。
+				this.menuScroll = new BScroll(this.$els.menuWrapper,{});
+				this.foodsScroll = new BScroll(this.$els.foodsWrapper,{});
+			}
+		}
+最后在get()获取后台数据的方法里调用方法this._initScroll(); 但是运行后发现页面还是不能滚动的：因为当初始化BScroll的时候，demo的数据却没有改变，vue里面更改数据，demo会跟着数据做映射，但vue在更新demo的时候是异步的，vue里有一个$nextTick的东西，在$nextTick里面demo才会执行异步更新。所以在get里面this.goods = response.data;虽然更新了数据，但是demo并没有变化，这时候初始化BScroll的时候，页面里面所有内容的高度的计算就会有问题，所以这里要用vue的$nextTick接口。this.$nextTick(() => {this._initScroll();});	把初始化放到$nextTick里面，这时就可以获取的内侧ul里所有内容的高度了，然后再和ul的父元素类名为foods-wrapper的div对比高度，但ul的高度大于foods-wrapper的高度的时候就可以滑动了。
+8.<li class="food-list food-list-hook"> 这句代码中的food-list-hook里的hook是vue常用的类名命名方法，表示food-list-hook是被js获取操作的类名，并没有事件的css样式。
+9.实时那个右侧区间的y值，和左侧的索引值做一个对比映射：
+首先在data里面定义一个变量scrollY，要跟踪这个变量，所以要放在data里面。如何监控scrollY，就要用BScroll的第二个参数probeType: 3属性。这个属性可以在scroll滚动的时候实时告诉我们滚动的位置。相当于探针的效果。这个时候不论是缓动，还是快速的滚动都能监控到。this.foodsScroll.on('scroll');这里就是通过this.foodsScroll来监听scroll事件。scroll事件的参数是pos，然后用上面定义的this.scrollY来接收pos.y;再然后用到vue的计算属性定义一个currentIndex方法。当scroll滚动的时候，currentIndex就可以实时的根据scroll的滚动计算出左侧当前索引应该在哪。然后给要实现效果的元素goods添加实时class,class里面是一个对象current,就是我们当前遍历goods的时候，会有一个$index索引，要是这个index和当前的currentIndex相等的时候，就给元素添加一个current的样式，实现高亮展示。
+10.点击左侧li，右侧跳转
+首先定义selectMenu(index){}函数，但是在selectMenu无法用点击事件，better-scroll实现原理是监听touchStart，touchEnd事件，在BScroll在初始化的时候，会阻止掉默认的点击事件。在这里要想有点击事件，需要是初始化BScroll的时候添加一个属性click: true;
+this.menuScroll = new BScroll(this.$els.menuWrapper,{click: true});
+给要点击的左侧的li添加点击事件@click="selectMenu($index,$event)";再在methods里面添加selectMenu事件。event就是点击事件。
+11.点击左侧li，在移动端是正常的，但在pc端console打印会发现被点击了两次，就相当于派发打印事件
+解决办法是在li里的点击事件中@click="selectMenu($index,$event)"不仅返回序号index,还返回点击事件event;在better-scroll里面派发事件的event和普通浏览器原生的点击事件有一个属性区别，即evnet._constructed。就是说当我们自己默认派发出来的事件，就是我们自己设置点击事件的时候，constructed是为true。浏览器原生是没有这个属性的。所以可以通过这个属性，当监听到这个属性为（!evnet._constructed)的时候，就return。当我们自己派发的事件的时候constructed是为true，就可以继续下面的逻辑了。
+12.vue开发的时候，遇到和原生做交互的时候，通过v-el这个接口，给元素加v-el:menu-wrapper以后，就可以通过this.$els.menuWrapper访问到它，就相当于拿到一个原生的demo。
+还有就是注意$nextTick接口，就是说当我们想要计算和demo相关的东西的时候，一定要保证demo已经渲染了，因为在vue里面虽然说demo是数据的自然映射，我们改变了数据就改变了demo。但是demo发生真正的变化是在nextTick的后面。随意在操作相关原生demo 的时候一定要调用nextTick接口。在这个接口的回调里面去做任何事件，这样才保障demo已经渲染好了，计算demo相关的属性和值得时候才不会有错误。
+13.购物车另需配送费￥元，里面的数值如何从data.json获取：首先在App.vue里面(<router-view :seller="seller"></router-view> ),router-view把seller传递到goods组件，goods组件再把seller传递到shopcart组件，shopcart组件就可以拿到seller这个变量，然后在shopcart里面通过deliveryPrice就可以拿到data.json里面的数值。
+注意：我们在goods.vue里面通过<shopcart :delivery-price="seller.deliveryPrice" :min-price="seller.minPrice"></shopcart>接受到App.vue里传过来的seller变量，在shopcart里面通过<div class="desc">另需配送费￥{{deliveryPrice}}元</div>接受goods.vue传递过来的seller变量，但是在页面中值却不会显示出来。这个是因为虽然seller变量是传进来了，但是我们还是要用props去接收这个变量。否则是没有用的。所以我们在sshopcart里面简单是写props: {deliveryPrice: {
+					    			type: Number,
+					    			default: 0
+					    		}};
+这样就可以在页面展示获取的数值了。
+
+14.在cartcontrol组件里面，给商品列表里的商品添加按钮添加点击事件，发现没有任何效果：因为商品列表是在foods-wrapper面板里的，是用BScroll，在BScroll下在移动端点击，就要在初始化BScroll的时候传递一个参数，在foodsScroll里添加click: true,这个参数。
+
+15.在cartcontrol组件里面，给商品列表里的商品添加按钮添加点击事件,也发现我们设置当点击添加按钮后this.food.count++;同时我们前面也设置了food.count>0时，减少按钮和数字显示出来。但是这里也没有效果：因为这就是js的特性，当我们给观测的对象添加一个他不存在的字段的时候，我们直接这么去赋值是不可以的，他的defineProperty是检测不到属性新增的变化的，所以在新增和删除某个字段的时候，想要观察到这个属性的变化，需要vue的一个接口，先全局引入import Vue from 'vue';然后在属性变化地方增加一个Vue.set()这个接口。Vue.set(this.food,'count',1);就表示给food添加一个count属性值为1，通过set()接口这个新增的变化就会被观测到。
+16.vue动画效果的实现：现在要实现动画的html元素加transition="move"再在该元素加&.move-transition,&.move-enter,&.move-leave等子类样式，组成左右滑动加透明效果。其中transform: translate3D(0,0,0)//translate3D开启硬件加速，让动画变得更流畅，改变括号内的值就可以实现左右移动不同位置的动画。注意，在cartcontrol组件里面的这个动画中，.inner是写在&.move-transition这个动画属性的下面的。
+
+17.shopcart和cartcontrol这两个组件联动的原理：我们操作的是单个的food对象，food改变了以后，selectFoods就会被改变，selectFoods是一个计算属性，它关系的是foods对象，foods内部是由food组成的，一旦food，good发生变化，selectFoods内部函数就会从新计算，就会便利到单个的food，如果food有count的话，就说明这个food是被选择的，那么就push到foods数组中。那么selectFoods的price和count都有了，那么shopcart组件就可以正常工作，shopcart和cartcontrol也可以完成联动。
+
+18.vue里面父组件访问子组件和访问DOM元素的方式是不同的：访问DOM元素时用v-el的指令，然后用this.$els.foodsWrapper的方式去访问。访问子组件用v-ref的指令,然后用this.$refs.foodsWrapper的方式去访问。this.$els，this.$refs指这个对象，foodsWrapper指变量。
+
+19.在商品页面点击添加商品到购物车的按钮时，滚动和小球两个动画同时执行，计算量有点大，看着卡顿，这里可以把执行动画的代码放到this.$nextTick这个回调里面执行，让两个动画异步执行.
+
+20.vue里面用stop阻止冒泡，用prevent阻止默认事件：在购物车组件里，当点击去计算的时候通过 @click.stop.prevent="pay"，里面的stop、prevent阻止冒泡和默认事件。
+
+21.如何在goods.vue里面引用商品详情组件即food.vue组件：1.在goods.vue里面的<script>下面通过import food from 'components/food/food'引入组件。2.然后在template里面通过<food :food="selectedFood"></food>引入,selectFood是选中food，food用data去关联，在data里面加selectedFood: {}关联。3.在components注册组件food，4.没有选中任何，当我们点击food层的时候，我们给他加一个grech键，让他可以选中food,在li上加@click="selectFood(food,$event)"；点击的时候我们也要拿到event，然后在methods里面实现selectFood().主要在li里面添加的点击事件selectFood()和food模块里面的selectedFood是不一样的，不要混淆了。
+
+22.在vue里面的data里面观测的数据的名称一定不要和methods里面的事件名相同，因为他们都能通过this.名称访问到。所以两个重名肯定有一个会被覆盖。
+
+23.设计组件的时候，父组件可以调用子组件的方法，子组件不能调用父组件的方法。所以这里定义show方法，在goods父组件里面就可以调用。同时设计组件方法的时候也有一个命名规范，如果这个方法是可以被外部调用的，一般就这样命名show。如果这个方法是组件私有的，一般会在前面加一个下划线_show。
+
+24.父组件怎么调用子组件的方法：<food :food="selectedFood" v-ref:food></food>;就是给父组件里面加v-ref:food；然后在selectFood方法里面添加this.$refs.food.show();
+
+25.food组件的图片，在data.json里面icon后面跟的是小图标地址，image里面的数据是大图的url地址,image是异步加载的，在food里面大图的高度因为是和宽度一致的switch，是不能定死的，这样在加载大图的时候就会出现抖动。解决办法是我们可以给父盒子height: 0;padding-top: 100%当我们给盒子设置padding-top为100%的时候，他是相对于盒子的宽度去计算的，这样就保证了上下的padding值和宽度是一样的，所以这个盒子看起来就是一个宽高相等的容器。然后给图片设置宽高都为100%;这样就可以实现一个宽高相等的图片了，不然图片会整个覆盖页面。
+
+26.商品详情页的图片下面的“加入购物车”按钮被点击了以后，就隐藏了这个时候发现，做动画的小球不是从这个按钮处下落到左下方的，而是从左上方落下的：原因是当点击了按钮以后，立马给这个按钮元素添加了display:none;属性。而动画是我们自定义的transitions动画函数实现的，在动画实现过程中是要先通过ball.el.getBoundingClientRect()来计算我当前点击的元素相对于屏幕的位置,此时由于element(el)被隐藏了。此时计算器就会有问题，解决的办法是让购物车的小说也做一个动画，这样他就不是立马隐藏了(display:none)；这样他的位置就会被计算到。在元素上加一个transition属性。
+
+27.vue里面把rating.rateTime毫秒数(1469281964000)转化为字符串(2017年5月25日 上午4:21:53)的话，可以用vue去写一个filter.方法就是在rating.rateTime后面加一个'|'再加一个filter的名字。{{rating.rateTime | formatDate}}
+
+28.如何新创建一个js模块并引用：在food组件里面要把date对象转为年月日，时分秒的形式，可以通过formatDate()函数方法实现，但是这个方法可能很多地方都要用到，所以我们把他放到date.js里面，当做模块来引用，这就是js模块化编程的思想。我们在data.js里面export function formatDate(date,fmt){};export引入事件，date参数，fmt是字符串,然后在food组件里面通过import {formatDate} from 'common/js/date';把formatDate方法引入。注意：： 为什么这里要在formatDate外面加"{}"因为他是通过export function formatDate(){}在js文件里面创建的，想shopcart等不带大括号的是一般是export default{}传过来的。一个是export function，一个是export default.
+
+29.刷新评价页面的时候会有报错，计算不出来当前页面的BScroll。原因在报错信息里面.
+
+30.商家页面图片左右滚动制作:先css把图片水平排列，然后通过BScroll让其滚动。在ready通过if判断有图片的时候，要给ul设置宽度，因为BScroll的实现原理就是内层的ul的宽度超过外层的pic-wrapper的时候才可以滚动。但是这里ul宽度是和外层的宽度是一样的。即使是由BScroll也不会滚动的，所以要手动设置ul的宽度。this.$els.picList.style.width = width + 'px';这就是给ul设置宽度。然后通过$nextTick给BScroll初始化。要注意eventPassthrough: 'vertical';这个属性的目的是让外层区块可以竖着滚动，内存区块可以横向滚动。然后我们发现在页面中还是不能横向滚动，这时因为和同在ready里上面的BScroll一样，在ready里面一开始刷新的时候，this.seller.pics里面的seller就是一个空的object，所以pics是没有的，所以if判断的逻辑不会被执行。解决方法同上面_initScroll()一样封装一个方法this._initPics();(就是把上面rady里面的方法封装到_initPics()里面再引用)。然后在watch里面引用，当watch的seller变化的时候_initPics()就会触发。但是当切换商品，商家的时候发现图片又不能滚动了，因为还是要在ready里面引用_initPics()。
+
+31.商家页面点击收藏切换，icon会左右移动：想让icon不动就要给父盒子favorite宽度.
+
+32.商家页面选中收藏icon变为红色，文字为"已收藏"，然后当我们切换到商品页面或者刷新，再返回商家页面，收藏不再保持"已收藏"状态,又变回未收藏了：解决方法是给页面url里面携带参数，我们先建一个util.js的文件。里面封装urlParse来把url里面的id解析出来到一个对象里，然后在app.vue里面引用这个js，给data里的seller添加一个优先运行id的参数函数，当页面刷新的时候，就会返回url路径里的id(queryParam.id),把这个id发送给seller，然后在created里发送url的时候，要带上这个id(this.$http.get('/api/seller?id='+this.seller.id)).这样当页面请求时都会发送这个id到后台，真实项目就可以从后台数据库查询到这个id的商家的数据，然后给我们返回正确的数据。但是这个id会和seller原有的id冲突(response.data已经包含了id).vue给我们一个建议，我们可以用Object.assign(),一个es6的语法去给这个做一个赋值。(this.seller = Object.assign({},this.seller,response.data);)assign包含3个参数，第一个是最终要接收到的数据，空的object.第二个要赋值的参数，第三个冲突的参数。相当于与extend方式扩展了this.seller这个属性，然后把结果赋值给空的object，然后返给this.seller。也就相当于在data里seller的id的基础上给seller添加了其他的属性，这样的话就不会把id直接给盖掉。这vue官网推荐的给对象扩展属性的方法。有了这个id我们就可以去做数据的缓存部分。
+
+33.*****(很重要)在App.vue模块里面的<router-view :seller="seller" keep-alive></router-view>添加了keep-alive属性，就能让页面记得我操作的状态，比如我在商品页面添加商品到购物车，然后我切换到商家页面或者刷新。 然后在切换回到商品页面，我购物车不会被清空，添加的商品还在购物车，就是说我切换的时候，vue的生命周期不会被从新加载。但是当刷新整个页面时，状态不会被保留。官网<keep-alive> 包裹动态组件时，会缓存不活动的组件实例，而不是销毁它们。
+
+34.svg制作图标字体，打开https:\\icomoon.io网址。点击左上角的"IconMoon App"的按钮。因为这个项目使用知己的svg图标，所以我们不用这个网站提供的icon，而是利用这个网站上传自己的svg文件制作icon图标。点击左上角的"import Icons"按钮，在弹出的选框里找到我们svg文件所在的位置，全部选中。点击代开上传到Icomoon网站，然后点击选中这些上传的小图标，点击右下角的"Generate Foot"按钮，生成图标字体，进入新的页面，再点击"Download"按钮下载，在下载之前可以点击"preferences"，
+设置icon图标保存的文件夹的名字或者icon的css样式等。解压下载的文件，把里面的fonts文件夹下的几个文件拷贝到我们中的src-common-foots文件夹下，把style.css文件拷贝到src-common-stylus下面，因为我们这个项目是用stylus属性css样式，所以这个css文件要改名为icon.styl。如果是用less或者sass预处理器就不需要改成这个名字了。同事因为后缀名是stylus规则下的的styl了，所以这个文件里面的一些书写内容也要改，里面所以的大括号和分号都要去掉。
+然后在项目里面，就可以通过<span class="icon-arrow-left"></span>，再添加一些css样式就可以用了。
+
+35.webstorm给一些基础文件如vue添加模版配置，新建vue文件，自动添加template,script,style等结构：点击webstorm的‘file’按钮，选择下面的'preferences' -> 'Editor' —> 'File and Code Templates'，然后点击左边的"+"按钮，然后在右边的选项里面填"name":"Vue File";"Extension":"vue"；然后添加一下<template>
+</template>script type="text/ecmascript-6">export default{};</script><style rel="stylesheet"></style>。这样当我们每次新建vue文件时，都会自动还是能成页面结构。
+
+
+
+
+
+
+
+
+
